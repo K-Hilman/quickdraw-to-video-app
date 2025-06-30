@@ -14,7 +14,11 @@ Powered by Flask, Pillow, MoviePy, and Tailwind CSS for a modern, responsive UI.
 
 ## Demo
 
-!TODO
+### Example Output
+
+Below is a sample video mosaic generated using the "Cat" category, filtered for Malaysia, in a square grid:
+
+![Cat Doodle Mosaic (Malaysia, Square)](static/quick_draw/cat_MY_sq.gif)
 
 ## Getting Started
 
