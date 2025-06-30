@@ -1,12 +1,20 @@
-from flask import Flask, render_template, request, send_from_directory, jsonify, url_for
+from flask import Flask, render_template, request, jsonify, url_for
 import os
-
-from quick_draw import qd_vid,qd
+import threading
+import uuid
+from quick_draw import qd_vid, qd
+from progress_store import progress_store
 
 app = Flask(__name__)
 
-# These would be your previously defined functions:
-# qd_gif, qd_vid, etc.
+# Dynamically set SERVER_NAME for background threads
+server_name = os.environ.get("RENDER_EXTERNAL_HOSTNAME")
+if server_name:
+    app.config["SERVER_NAME"] = server_name
+    app.config["PREFERRED_URL_SCHEME"] = "https"
+else:
+    app.config["SERVER_NAME"] = "localhost:5000"
+    app.config["PREFERRED_URL_SCHEME"] = "http"
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 current_dir = os.path.join(BASE_DIR, 'static', 'quick_draw')
@@ -69,13 +77,36 @@ def generate():
     ratio = request.form.get('ratio')
     seed = request.form.get('seed')
     seed_val = int(seed) if seed else None
+    jobid = str(uuid.uuid4())
+    filename = f"{category}_{country}_{ratio}_{jobid}.mp4"
+    outfile = os.path.join('static', 'quick_draw', filename)
 
-    # Run your function (do error checking here too)
-    # This will generate a video at static/quick_draw/{category}_{country}_{ratio}.mp4
-    qd_vid(category, country, ratio, seed_val)
-    filename = f"{category}_{country}_{ratio}.mp4"
-    video_url = url_for('static', filename=f'quick_draw/{filename}')
-    return jsonify({"video_url": video_url})
+    # Mark job as "started"
+    progress_store.set(jobid, {'percent': 0, 'status': 'working'})
+
+    # Start background worker
+    def worker():
+        try:
+            def cb(progress):
+                percent = int(progress * 100)
+                progress_store.set(jobid, {'percent': percent, 'status': 'working'})
+            qd_vid(category, country, ratio, seed_val, progress_callback=cb, outfile=outfile)
+            # When done:
+            with app.app_context():
+                progress_store.set(jobid, {
+                    'percent': 100,
+                    'status': 'finished',
+                    'video_url': url_for('static', filename=f'quick_draw/{filename}', _external=True)
+                })
+        except Exception as ex:
+            progress_store.set(jobid, {'percent': 0, 'status': 'error', 'error': str(ex)})
+
+    threading.Thread(target=worker, daemon=True).start()
+    return jsonify({"jobid": jobid})
+
+@app.route('/progress/<jobid>')
+def progress(jobid):
+    return jsonify(progress_store.get(jobid))
 
 if __name__ == '__main__':
     app.run(debug=True)

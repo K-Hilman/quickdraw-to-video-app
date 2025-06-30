@@ -56,7 +56,7 @@ def qd_gif(category, country='MY', current_dir=current_dir, qty=None, seed=None)
     return gif_paths
 
 
-def qd_vid(category, country='MY',ratio='sq',seed=None):
+def qd_vid(category, country='MY', ratio='sq', seed=None, progress_callback=None, outfile=None):
     """
     Fetches video drawings from QuickDraw dataset for a specified category.
     Fetch a specific number of drawing based on the ratio
@@ -66,6 +66,12 @@ def qd_vid(category, country='MY',ratio='sq',seed=None):
 
     Compile the multiple gifs into a video file, corresponding to the ratio.
     """
+    total_steps = 3 # Total steps in the process
+    curr_step = 0
+
+    # Generate the GIFs...
+    if progress_callback:
+        progress_callback(curr_step / total_steps)
 
     if ratio == 'sq':
         qty = 100
@@ -83,12 +89,18 @@ def qd_vid(category, country='MY',ratio='sq',seed=None):
 
     if not gif_list:
         raise ValueError(f"No drawings found for category '{category}' and country '{country}'. Try another combination!")
-
+    
     gifs = [Image.open(gif) for gif in gif_list]
     if not gifs:
         raise ValueError(f"No GIFs could be created for category '{category}' and country '{country}'.")
+    
+    curr_step += 1
 
     # Iniaite grid, assuming all gifs have the same size
+
+    if progress_callback:
+        progress_callback(curr_step / total_steps)
+
     gif_width, gif_height = gifs[0].size
     grid_width = gif_width * grid_size[0]
     grid_height = gif_height * grid_size[1]
@@ -123,11 +135,25 @@ def qd_vid(category, country='MY',ratio='sq',seed=None):
     grid_frames[0].save(output_path, save_all=True, append_images=grid_frames[1:], loop=0, duration=100)
     print(f'GIF video saved at {output_path}')
 
+    curr_step += 1
+
     # Convert GIF to video using moviepy
-    video_path = os.path.join(current_dir, f"{category}_{country}_{ratio}.mp4")
+    if progress_callback:
+        progress_callback(curr_step / total_steps)
+        
+    if outfile is None:
+        video_path = os.path.join(current_dir, f"{category}_{country}_{ratio}.mp4")
+    else:
+        video_path = outfile
+
     clip = VideoFileClip(output_path)
     print(f'Converting GIF to video: {output_path}')
     clip.write_videofile(video_path, codec='libx264')
     print(f'Gif converted to video at: {video_path}')
+
+    curr_step += 1
+
+    if progress_callback:
+        progress_callback(1.0)
 
 #qd_vid('star','MY','st')

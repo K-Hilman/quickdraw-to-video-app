@@ -13,33 +13,48 @@
       const form = document.getElementById('qdform');
       const data = new FormData(form);
       document.getElementById('result').innerHTML = "Processing, please wait...";
+      document.getElementById('progress-wrap').style.display = '';
 
-      fetch('/generate', {method: 'POST', body: data})
+      fetch('/generate', { method: 'POST', body: data })
         .then(response => response.json())
         .then(obj => {
-            if (obj.video_url) {
-                document.getElementById('result').innerHTML = `
-                  <h3 class="text-lg font-semibold mb-2">Resulting Video:</h3>
-                  <video controls class="w-full rounded shadow mb-3">
-                    <source src="${obj.video_url}" type="video/mp4">
-                    Your browser does not support the video tag.
-                  </video>
-                  <p><a class="text-blue-600 underline" href="${obj.video_url}" download>Download Video</a></p>
-                `;
-            } else if (obj.error) {
-                document.getElementById('result').innerText = 'Error: ' + obj.error;
-            } else {
-                document.getElementById('result').innerText = 'Error: Could not generate video.';
-            }
+          if (obj.jobid) {
+            pollProgress(obj.jobid);
+          } else {
+            document.getElementById('result').innerText = 'Error: Could not start job.';
+            document.getElementById('progress-wrap').style.display = 'none';
+          }
         });
       return false;
     }
-    window.addEventListener('DOMContentLoaded', function() {
-      new Choices('#category', { searchEnabled: true });
-      new Choices('#country', { searchEnabled: true });
-    });
+
+    function pollProgress(jobid) {
+      fetch('/progress/' + jobid)
+        .then(r => r.json())
+        .then(obj => {
+          if (obj.status === 'working') {
+            document.getElementById('progress-bar').style.width = obj.percent + '%';
+            setTimeout(() => pollProgress(jobid), 1000);
+          } else if (obj.status === 'finished') {
+            document.getElementById('progress-bar').style.width = '100%';
+            document.getElementById('result').innerHTML = `
+                <h3 class="text-lg font-semibold mb-2">Resulting Video:</h3>
+                <video controls class="w-full rounded shadow mb-3">
+                  <source src="${obj.video_url}" type="video/mp4">
+                  Your browser does not support the video tag.
+                </video>
+                <p><a class="text-blue-600 underline" href="${obj.video_url}" download>Download Video</a></p>
+            `;
+            document.getElementById('progress-wrap').style.display = 'none';
+          } else if (obj.status === 'error') {
+            document.getElementById('result').innerText = 'Error: ' + obj.error;
+            document.getElementById('progress-wrap').style.display = 'none';
+          }
+        });
+    }
   </script>
 </head>
+
 <body class="bg-gray-100 min-h-screen flex items-center justify-center">
   <div class="bg-white rounded-xl shadow-xl p-8 w-full max-w-md m-12">
     <h2 class="text-2xl font-bold mb-6 text-center">QuickDraw Video Generator</h2>
@@ -85,15 +100,17 @@
       <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded shadow transition">
         Generate Video
       </button>
+      <!-- Progress bar neatly under the button -->
+      <div id="progress-wrap" class="w-full bg-gray-200 rounded mt-6 mb-2" style="display: none;">
+        <div id="progress-bar" class="bg-blue-500 h-4 rounded transition-all duration-300" style="width: 0%;"></div>
+      </div>
     </form>
-    <div id="result" class="mt-6 text-center"></div>
+    <div id="result" class="mt-8 text-center"></div>
   </div>
+  <style>
+    .choices__inner{
+      margin-top: 5px;
+    }
+  </style>
 </body>
-
-<style>
-.choices__inner{
-  margin-top: 5px;
-}
-</style>
-
 </html>
