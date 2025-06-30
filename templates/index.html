@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>QuickDraw Video Generator</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/choices.js/public/assets/styles/choices.min.css" />
+  <script src="https://cdn.jsdelivr.net/npm/choices.js/public/assets/scripts/choices.min.js"></script>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script>
+    function generateVideo(e) {
+      e.preventDefault();
+      const form = document.getElementById('qdform');
+      const data = new FormData(form);
+      document.getElementById('result').innerHTML = "Processing, please wait...";
+
+      fetch('/generate', {method: 'POST', body: data})
+        .then(response => response.json())
+        .then(obj => {
+            if (obj.video_url) {
+                document.getElementById('result').innerHTML = `
+                  <h3 class="text-lg font-semibold mb-2">Resulting Video:</h3>
+                  <video controls class="w-full rounded shadow mb-3">
+                    <source src="${obj.video_url}" type="video/mp4">
+                    Your browser does not support the video tag.
+                  </video>
+                  <p><a class="text-blue-600 underline" href="${obj.video_url}" download>Download Video</a></p>
+                `;
+            } else if (obj.error) {
+                document.getElementById('result').innerText = 'Error: ' + obj.error;
+            } else {
+                document.getElementById('result').innerText = 'Error: Could not generate video.';
+            }
+        });
+      return false;
+    }
+    window.addEventListener('DOMContentLoaded', function() {
+      new Choices('#category', { searchEnabled: true });
+      new Choices('#country', { searchEnabled: true });
+    });
+  </script>
+</head>
+<body class="bg-gray-100 min-h-screen flex items-center justify-center">
+  <div class="bg-white rounded-xl shadow-xl p-8 w-full max-w-md m-12">
+    <h2 class="text-2xl font-bold mb-6 text-center">QuickDraw Video Generator</h2>
+    <form id="qdform" onsubmit="generateVideo(event)">
+      <div class="mb-4">
+        <label class="block mb-1 font-medium text-gray-700">
+          Category
+          <select id="category" name="category" required class="mt-1 block w-full rounded border-gray-300 focus:border-blue-500 focus:ring-blue-400">
+            {% for cat in categories %}
+              <option value="{{cat}}" {% if cat == 'star' %}selected{% endif %}>{{cat}}</option>
+            {% endfor %}
+          </select>
+        </label>
+      </div>
+      <div class="mb-4">
+        <label class="block mb-1 font-medium text-gray-700">
+          Country
+          <select id=country name="country" class="mt-1 block w-full rounded border-gray-300 focus:border-blue-500 focus:ring-blue-400">
+            {% for code, name in countries %}
+              <option value="{{code}}" {% if code=='MY' %}selected{% endif %}>
+                {{name}} ({{code}})
+              </option>
+            {% endfor %}
+          </select>
+        </label>
+      </div>
+      <div class="mb-4">
+        <label class="block mb-1 font-medium text-gray-700">
+          Size
+          <select name="ratio" class="mt-1 block w-full rounded border-gray-300 focus:border-blue-500 focus:ring-blue-400">
+            <option value="sq">Square (10x10)</option>
+            <option value="st">Story (9x16)</option>
+            <option value="ls">Landscape (16x9)</option>
+          </select>
+        </label>
+      </div>
+      <div class="mb-6">
+        <label class="block mb-1 font-medium text-gray-700">
+          Seed
+          <input type="number" name="seed" placeholder="(optional)" class="mt-1 block w-full rounded border-gray-300 focus:border-blue-500 focus:ring-blue-400" />
+        </label>
+      </div>
+      <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded shadow transition">
+        Generate Video
+      </button>
+    </form>
+    <div id="result" class="mt-6 text-center"></div>
+  </div>
+</body>
+
+<style>
+.choices__inner{
+  margin-top: 5px;
+}
+</style>
+
+</html>
