@@ -52,16 +52,6 @@ Visit [http://localhost:5000](http://localhost:5000) in your browser.
 2. Click `Generate Video`.
 3. Wait for your video; then view, download, or share!
 
-## File Structure
-
-```
-├── app.py                # Flask app entry point
-├── quick_draw.py         # QuickDraw video logic
-├── requirements.txt      # Project dependencies
-├── templates/
-│   └── index.html        # Main UI template
-├── static/
-│   └── quick_draw/       # Output files (videos, images)
 ```
 
 ## License
